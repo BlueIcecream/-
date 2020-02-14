@@ -145,3 +145,40 @@ ReLu函数是一个通用的激活函数，目前在大多数情况下使用。�
 ----
 [code](code/多层感知机pytorch实现.py)
 
+文本预处理
+====
+文本是一类序列数据，一篇文章可以看作是字符或单词的序列，本节将介绍文本数据的常见预处理步骤，预处理通常包括四个步骤：
+
+* 读入文本
+* 分词
+* 建立字典，将每个词映射到一个唯一的索引（index）
+* 将文本从词的序列转换为索引的序列，方便输入模型
+
+将词转为索引
+---
+使用字典，我们可以将原文本中的句子从单词序列转换为索引序列
+
+缺点：
+* 标点符号通常可以提供语义信息，但是我们的方法直接将其丢弃了
+* 类似“shouldn't", "doesn't"这样的词会被错误地处理
+* 类似"Mr.", "Dr."这样的词会被错误地处理
+
+spaCy:
+---
+```
+import spacy
+nlp = spacy.load('en_core_web_sm')
+doc = nlp(text)
+print([token.text for token in doc])
+```
+
+NLTK:
+---
+```
+from nltk.tokenize import word_tokenize
+from nltk import data
+data.path.append('/home/kesci/input/nltk_data3784/nltk_data')
+print(word_tokenize(text))
+```
+
+
