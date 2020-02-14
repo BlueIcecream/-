@@ -194,9 +194,54 @@ n元语法
 时序数据的采样
 ---
 * 随机采样
+
 每次从数据里随机采样一个小批量。其中批量大小batch_size是每个小批量的样本数，num_steps是每个样本所包含的时间步数。 在随机采样中，每个样本是原始序列上任意截取的一段序列，相邻的两个随机小批量在原始序列上的位置不一定相毗邻
 
 * 相邻采样
 
 在相邻采样中，相邻的两个随机小批量在原始序列上的位置相毗邻
+
+循环神经网络
+====
+
+能够捕捉截至当前时间步的序列的历史信息，就像是神经网络当前时间步的状态或记忆一样。
+
+从零开始实现循环神经网络
+----
+[code](code/从零开始实现循环神经网络.py)
+
+one-hot向量
+---
+
+假设词典大小是 N ，每次字符对应一个从 0 到 N−1 的唯一的索引，则该字符的向量是一个长度为 N 的向量，若字符的索引是 i ，则该向量的第 i 个位置为 1 ，其他位置为 0 。下面分别展示了索引为0和2的one-hot向量，向量长度等于词典大小
+
+困惑度
+---
+
+* 最佳情况下，模型总是把标签类别的概率预测为1，此时困惑度为1；
+
+* 最坏情况下，模型总是把标签类别的概率预测为0，此时困惑度为正无穷；
+
+* 基线情况下，模型总是预测所有类别的概率都相同，此时困惑度为类别个数。
+
+循环神经网络的简介实现
+---
+
+nn.RNN的以下几个构造函数参数：
+
+* input_size - The number of expected features in the input x
+* hidden_size – The number of features in the hidden state h
+* nonlinearity – The non-linearity to use. Can be either 'tanh' or 'relu'. Default: 'tanh'
+* batch_first – If True, then the input and output tensors are provided as (batch_size, num_steps, input_size). Default: False
+
+forward函数的参数为：
+
+* input of shape (num_steps, batch_size, input_size): tensor containing the features of the input sequence.
+* h_0 of shape (num_layers * num_directions, batch_size, hidden_size): tensor containing the initial hidden state for each element in the batch. Defaults to zero if not provided. If the RNN is bidirectional, num_directions should be 2, else it should be 1.
+
+forward函数的返回值是：
+
+* output of shape (num_steps, batch_size, num_directions * hidden_size): tensor containing the output features (h_t) from the last layer of the RNN, for each t.
+* h_n of shape (num_layers * num_directions, batch_size, hidden_size): tensor containing the hidden state for t = num_steps.
+
 
