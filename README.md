@@ -227,6 +227,8 @@ one-hot向量
 循环神经网络的简介实现
 ---
 
+[code](code/循环神经网络的简介实现.py)
+
 nn.RNN的以下几个构造函数参数：
 
 * input_size - The number of expected features in the input x
