@@ -93,4 +93,202 @@ LSTM长短期记忆
 
 前向Ht与后向的Ht用concat进行连接
 
+机器翻译及相关技术
+===
+
+用神经网络，将一段文本从一种语言自动翻译为另一种语言。
+
+数据预处理
+----
+
+将数据集清洗、转化为神经网络的输入minbatch
+
+分词
+---
+
+将字符串转化为单词组成的列表
+
+建立词典
+---
+
+将单词组成的列表转化为由单词和id组成的列表
+
+Encoder-Decoder
+----
+
+由于输入的数据和输出的数据可能数量不相等
+
+* encoder：输入到隐藏状态
+
+* decoder：隐藏状态到输出
+
+首先由encoder将输入数据转化为隐藏状态，之后由decoder将隐藏态转化输出
+
+Sequence to Sequence模型
+---
+
+* 预测时decoder每个单元输出得到的单词作为下一个单元的输入单词。
+
+* 预测时decoder单元输出为句子结束符时跳出循环。
+
+* 每个batch训练时encoder和decoder都有固定长度的输入。
+
+Beam Search
+----
+
+* 集束搜索结合了greedy search和维特比算法
+
+* 集束搜索使用beam size参数来限制在每一步保留下来的可能性词的数量
+
+注意力机制与Seq2seq模型
+----
+
+注意力机制
+---
+
+解码的目标词语可能只与原输入的部分词语有关，而并不是与所有的输入有关。在seq2seq模型中，解码器只能隐式地从编码器的最终状态中选择相应的信息。然而，注意力机制可以将这种选择过程显式地建模。
+
+注意力机制框架
+---
+Attention 是一种通用的带权池化方法，输入由两部分构成：询问（query）和键值对（key-value pairs）,attention layer 会与每一个key计算注意力分数并进行权重的归一化，输出的向量 o 则是value的加权求和，而每个key计算的权重与value一一对应。
+
+多层感知机注意力
+----
+
+在多层感知器中，我们首先将 query and keys 投影到Rh,然后将key 和 value 在特征的维度上合并（concatenate），然后送至 a single hidden layer perceptron 这层中 hidden layer 为 ℎ and 输出的size为 1 .隐层激活函数为tanh，无偏置
+
+引入注意力机制的Seq2seq模型
+---
+
+将注意机制添加到sequence to sequence 模型中，以显式地使用权重聚合states。
+attention layer保存着encodering看到的所有信息——即encoding的每一步输出
+解码器的 t 时刻的隐藏状态被当作query，encoder的每个时间步的hidden states作为key和value进行attention聚合
+Attetion model的输出当作成上下文信息context vector，并与解码器输入拼接起来一起送到解码器
+
+解码器
+---
+
+添加了一个MLP注意层(MLPAttention)，它的隐藏大小与解码器中的LSTM层相同。然后我们通过从编码器传递三个参数来初始化解码器的状态:
+
+* the encoder outputs of all timesteps：encoder输出的各个状态，被用于attetion layer的memory部分，有相同的key和values
+* the hidden state of the encoder’s final timestep：编码器最后一个时间步的隐藏状态，被用于初始化decoder 的hidden state
+* the encoder valid length: 编码器的有效长度，借此，注意层不会考虑编码器输出中的填充标记（Paddings）
+
+Transformer
+===
+
+该模型利用attention机制实现了并行化捕捉序列依赖，并且同时处理序列的每个位置的tokens，上述优势使得Transformer模型在性能优异的同时大大减少了训练时间
+
+* Transformer blocks：将seq2seq模型重的循环网络替换为了Transformer Blocks，该模块包含一个多头注意力层（Multi-head Attention Layers）以及两个position-wise feed-forward networks（FFN）。对于解码器来说，另一个多头注意力层被用于接受编码器的隐藏状态。
+* Add and norm：多头注意力层和前馈网络的输出被送到两个“add and norm”层进行处理，该层包含残差结构以及层归一化。
+* Position encoding：由于自注意力层并没有区分元素的顺序，所以一个位置编码层被用于向序列元素里添加位置信息。
+
+多头注意力层
+---
+
+多头注意力层包含 h 个并行的自注意力层，每一个这种层被成为一个head。对每个头来说，在进行注意力计算之前，我们会将query、key和value用三个现行层进行映射，这 h 个注意力头的输出将会被拼接之后输入最后一个线性层进行整合。
+
+基于位置的前馈网络
+----
+
+Transformer 模块另一个非常重要的部分就是基于位置的前馈网络（FFN），它接受一个形状为（batch_size，seq_length, feature_size）的三维张量。Position-wise FFN由两个全连接层组成，他们作用在最后一维上。因为序列的每个位置的状态都会被单独地更新，所以我们称他为position-wise，这等效于一个1x1的卷积。
+
+Add and Norm
+---
+
+Transformer还有一个重要的相加归一化层，它可以平滑地整合输入和其他层的输出，因此我们在每个多头注意力层和FFN层后面都添加一个含残差连接的Layer Norm层。这里 Layer Norm 与7.5小节的Batch Norm很相似，唯一的区别在于Batch Norm是对于batch size这个维度进行计算均值和方差的，而Layer Norm则是对最后一维进行计算。层归一化可以防止层内的数值变化过大，从而有利于加快训练速度并且提高泛化性能。
+
+位置编码
+---
+
+与循环神经网络不同，无论是多头注意力网络还是前馈神经网络都是独立地对每个位置的元素进行更新，这种特性帮助我们实现了高效的并行，却丢失了重要的序列顺序的信息。为了更好的捕捉序列信息，Transformer模型引入了位置编码去保持输入序列元素的位置。
+
+解码器
+---
+
+Transformer 模型的解码器与编码器结构类似，然而，除了之前介绍的几个模块之外，编码器部分有另一个子模块。该模块也是多头注意力层，接受编码器的输出作为key和value，decoder的状态作为query。与编码器部分相类似，解码器同样是使用了add and norm机制，用残差和层归一化将各个子层的输出相连。
+
+卷积神经网络基础
+====
+
+卷积层和池化层，并解释填充、步幅、输入通道和输出通道的含义。
+
+二维卷积层
+----
+
+常见的二维卷积层，常用于处理图像数据
+
+二维互相关运算
+---
+
+二维互相关（cross-correlation）运算的输入是一个二维输入数组和一个二维核（kernel）数组，输出也是一个二维数组，其中核数组通常称为卷积核或过滤器（filter）。卷积核的尺寸通常小于输入数组，卷积核在输入数组上滑动，在每个位置上，卷积核与该位置处的输入子数组按元素相乘并求和，得到输出数组中相应位置的元素。
+
+二维卷积层
+--
+
+二维卷积层将输入和卷积核做互相关运算，并加上一个标量偏置来得到输出。卷积层的模型参数包括卷积核和标量偏置。
+
+互相关运算与卷积运算
+---
+
+卷积层得名于卷积运算，但卷积层中用到的并非卷积运算而是互相关运算。我们将核数组上下翻转、左右翻转，再与输入数组做互相关运算，这一过程就是卷积运算。由于卷积层的核数组是可学习的，所以使用互相关运算与使用卷积运算并无本质区别
+
+特征图与感受野
+--
+
+二维卷积层输出的二维数组可以看作是输入在空间维度（宽和高）上某一级的表征，也叫特征图（feature map）。影响元素 x 的前向计算的所有可能输入区域（可能大于输入的实际尺寸）叫做 x 的感受野（receptive field）。
+
+填充和步幅
+---
+
+卷积层的两个超参数，即填充和步幅，它们可以对给定形状的输入和卷积核改变输出形状
+
+* 填充:是指在输入高和宽的两侧填充元素（通常是0元素），图2里我们在原输入高和宽的两侧分别添加了值为0的元素。
+
+* 步幅:卷积核在输入数组上滑动，每次滑动的行数与列数即是步幅（stride）。
+
+多输入通道和多输出通道
+---
+
+之前的输入和输出都是二维数组，但真实数据的维度经常更高。例如，彩色图像在高和宽2个维度外还有RGB（红、绿、蓝）3个颜色通道。假设彩色图像的高和宽分别是 h 和 w （像素），那么它可以表示为一个 3×h×w 的多维数组，我们将大小为3的这一维称为通道（channel）维。
+
+* 多输入通道:卷积层的输入可以包含多个通道,将多个相关运算的二维输出按通道相加，得到一个二维数组作为输出。
+
+* 多输出通道：卷积层的输出也可以包含多个通道，如果希望得到含多个通道的输出，我们可以为每个输出通道分别创建形状线条的核数组，将他们在输出通道维上相连接。
+
+卷积层与全连接层的对比
+---
+
+二维卷积层经常用于处理图像，与此前的全连接层相比，它主要有两个优势：
+
+* 全连接层把图像展平成一个向量，在输入图像上相邻的元素可能因为展平操作不再相邻，网络难以捕捉局部信息。而卷积层的设计，天然地具有提取局部信息的能力。
+
+* 二是卷积层的参数量更少
+
+卷积层的简洁实现
+---
+
+我们使用Pytorch中的nn.Conv2d类来实现二维卷积层，主要关注以下几个构造函数参数：
+
+* in_channels (python:int) – Number of channels in the input imag
+* out_channels (python:int) – Number of channels produced by the convolution
+* kernel_size (python:int or tuple) – Size of the convolving kernel
+* stride (python:int or tuple, optional) – Stride of the convolution. Default: 1
+* padding (python:int or tuple, optional) – Zero-padding added to both sides of the input. Default: 0
+* bias (bool, optional) – If True, adds a learnable bias to the output. Default: True
+
+池化
+--
+
+池化层主要用于缓解卷积层对位置的过度敏感性。同卷积层一样，池化层每次对输入数据的一个固定形状窗口（又称池化窗口）中的元素计算输出，池化层直接计算池化窗口内元素的最大值或者平均值，该运算也分别叫做最大池化或平均池化。
+
+池化层的简洁实现
+--
+
+我们使用Pytorch中的nn.MaxPool2d实现最大池化层，关注以下构造函数参数：
+
+* kernel_size – the size of the window to take a max over
+* stride – the stride of the window. Default value is kernel_size
+padding – implicit zero padding to be added on both sides
+
 
